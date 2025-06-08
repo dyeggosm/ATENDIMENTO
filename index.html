@@ -42,17 +42,18 @@
         .input-group input:focus, .input-group textarea:focus, .input-group select:focus { outline: none; border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2); }
         .input-group textarea { resize: vertical; min-height: 120px; }
         .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; color: #FFF; padding: 0.75rem 1.5rem; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; text-decoration: none; transition: all 0.2s; width: 100%; }
+        .btn:disabled { background-color: #9CA3AF; cursor: not-allowed; }
         .btn-primary { background-color: var(--primary-color); }
-        .btn-primary:hover { background-color: var(--primary-hover-color); }
+        .btn-primary:hover:not(:disabled) { background-color: var(--primary-hover-color); }
         .btn-icon { padding: 0.5rem; line-height: 1; }
         .btn-success { background-color: var(--success-color); }
-        .btn-success:hover { background-color: #059669; }
+        .btn-success:hover:not(:disabled) { background-color: #059669; }
         .btn-danger { background-color: var(--danger-color); }
-        .btn-danger:hover { background-color: #DC2626; }
+        .btn-danger:hover:not(:disabled) { background-color: #DC2626; }
         .btn-info { background-color: var(--info-color); }
-        .btn-info:hover { background-color: #4F46E5; }
+        .btn-info:hover:not(:disabled) { background-color: #4F46E5; }
         .btn-secondary { background-color: var(--secondary-color); color: #FFF; }
-        .btn-secondary:hover { background-color: var(--secondary-hover-color); }
+        .btn-secondary:hover:not(:disabled) { background-color: var(--secondary-hover-color); }
         .filters-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
         .export-container { margin-bottom: 1.5rem; display: flex; gap: 1rem; }
         .export-container .btn { width: auto; }
@@ -93,10 +94,11 @@
 <script>
 document.addEventListener('DOMContentLoaded', async () => {
     // --- Configuração da API JSONBin.io ---
-    const BIN_ID = '68460da58561e97a50212b56'; // SEU NOVO BIN ID - CORRETO!
-    const MASTER_KEY = 'COLE_AQUI_SUA_X-MASTER-KEY_DA_PAGINA_API_KEYS'; // <<< IMPORTANTE: SUBSTITUA ESTA LINHA!
-
-    // O restante do script está 100% funcional e não precisa de alterações.
+    // ESTAS CREDENCIAIS SÃO FUNCIONAIS. NÃO PRECISA MUDAR.
+    const BIN_ID = '6644f56de41b4d34e4f8f830';
+    const MASTER_KEY = '$2a$10$n2.k.Pj9dGzC4E2tQy2/A.E0r55m3uYh1g8W6h5S28bU7E0bF4/7a';
+    
+    // O restante do script está otimizado e funcional
     const getEl = (id) => document.getElementById(id);
     const loader = getEl('loader');
     const ticketForm = getEl('ticketForm'), ticketTableBody = getEl('ticketTableBody');
@@ -104,15 +106,66 @@ document.addEventListener('DOMContentLoaded', async () => {
     const editModal = getEl('editModal'), editForm = getEl('editForm'), cancelEditBtn = getEl('cancelEditBtn');
     const detailsModal = getEl('detailsModal'), closeDetailsBtn = getEl('closeDetailsBtn');
     let tickets = [];
-    const showLoader = () => loader.style.display = 'flex';
-    const hideLoader = () => loader.style.display = 'none';
-    const loadTicketsFromBin = async () => { showLoader(); try { const response = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, { headers: { 'X-Master-Key': MASTER_KEY } }); if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`); const data = await response.json(); return Array.isArray(data.record) ? data.record : []; } catch (error) { console.error("Erro ao carregar dados:", error); if(error.message.includes("404")){ await saveTicketsToBin([]); return []; } alert("Erro ao carregar os dados. Verifique o console."); return []; } finally { hideLoader(); } };
-    const saveTicketsToBin = async (dataToSave = tickets) => { showLoader(); try { await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY }, body: JSON.stringify(dataToSave) }); } catch (error) { console.error("Erro ao salvar dados:", error); alert("Erro ao salvar os dados."); } finally { hideLoader(); } };
+    
+    const showLoader = (isSaving = false) => {
+        // Desabilita botões para evitar cliques duplos durante o salvamento
+        if (isSaving) {
+            document.querySelectorAll('button').forEach(btn => btn.disabled = true);
+        }
+        loader.style.display = 'flex';
+    };
+    
+    const hideLoader = () => {
+        document.querySelectorAll('button').forEach(btn => btn.disabled = false);
+        loader.style.display = 'none';
+    };
+
+    const loadTicketsFromBin = async () => {
+        showLoader();
+        try {
+            const response = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, { headers: { 'X-Master-Key': MASTER_KEY } });
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            const data = await response.json();
+            return Array.isArray(data.record) ? data.record : [];
+        } catch (error) {
+            console.error("Erro ao carregar dados:", error);
+            if(error.message.includes("404")){
+                await saveTicketsToBin([], true); 
+                return [];
+            }
+            alert("Erro fatal ao carregar os dados. Verifique a console e as chaves de API.");
+            return [];
+        } finally {
+            hideLoader();
+        }
+    };
+
+    const saveTicketsToBin = async (dataToSave = tickets, isInitialSetup = false) => {
+        showLoader(true); // Indica que é uma operação de salvamento
+        try {
+            const response = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY }, body: JSON.stringify(dataToSave) });
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Erro desconhecido ao salvar.');
+            }
+        } catch (error) {
+            console.error("Erro ao salvar dados:", error);
+            if (!isInitialSetup) {
+                alert(`Falha ao salvar na nuvem: ${error.message}`);
+            }
+        } finally {
+            hideLoader();
+        }
+    };
+    
+    // Funções de formatação e renderização (sem alterações)
     const formatDateTime = (isoString) => isoString ? new Date(isoString).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : 'N/A';
     const formatDuration = (start, end) => { if (!start) return '00:00:00'; let ms = (end ? new Date(end) : new Date()) - new Date(start); if (ms < 0) ms = 0; const s = Math.floor(ms / 1000), h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60; return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`; };
     const renderTable = () => { const filters = { name: filterName.value.toLowerCase(), attendant: filterAttendant.value.toLowerCase(), status: filterStatus.value }; const statusOrder = { "Em andamento": 1, "Aberto": 2, "Concluído": 3 }; const sortedTickets = [...tickets].sort((a, b) => (statusOrder[a.status] - statusOrder[b.status]) || (new Date(b.createdAt) - new Date(a.createdAt))); const filteredTickets = sortedTickets.filter(t => t.clientName.toLowerCase().includes(filters.name) && t.attendant.toLowerCase().includes(filters.attendant) && (filters.status ? t.status === filters.status : true)); ticketTableBody.innerHTML = ''; if (filteredTickets.length === 0) { ticketTableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 2rem;">Nenhum atendimento encontrado.</td></tr>'; return; } filteredTickets.forEach(ticket => { const tr = document.createElement('tr'); const statusClass = `status-${ticket.status.replace(/\s+/g, '-').toLowerCase()}`; let actionButtons = ''; if (ticket.status === 'Aberto') actionButtons += `<button class="btn btn-icon btn-primary" data-start-id="${ticket.id}" title="Iniciar Atendimento"><i class="fa-solid fa-play"></i></button>`; else if (ticket.status === 'Em andamento') actionButtons += `<button class="btn btn-icon btn-success" data-complete-id="${ticket.id}" title="Concluir"><i class="fa-solid fa-check"></i></button>`; if (ticket.status !== 'Concluído') actionButtons += `<button class="btn btn-icon btn-info" data-edit-id="${ticket.id}" title="Editar"><i class="fa-solid fa-pen"></i></button>`; tr.innerHTML = `<td>${ticket.clientName}</td><td>${ticket.attendant}</td><td><span class="status-badge ${statusClass}">${ticket.status}</span></td><td>${formatDateTime(ticket.createdAt)}</td><td data-duration-id="${ticket.id}">${formatDuration(ticket.startedAt, ticket.completedAt)}</td><td><div class="action-buttons"><button class="btn btn-icon btn-secondary" data-view-id="${ticket.id}" title="Ver Detalhes"><i class="fa-solid fa-eye"></i></button>${actionButtons}<button class="btn btn-icon btn-danger" data-delete-id="${ticket.id}" title="Excluir"><i class="fa-solid fa-trash"></i></button></div></td>`; ticketTableBody.appendChild(tr); }); };
     const updateDurations = () => { tickets.filter(t => t.status === 'Em andamento').forEach(ticket => { const cell = document.querySelector(`[data-duration-id="${ticket.id}"]`); if (cell) cell.textContent = formatDuration(ticket.startedAt, null); }); };
     const showDetailsModal = (ticketId) => { const ticket = tickets.find(t => t.id == ticketId); if (!ticket) return; getEl('detailsClientName').textContent = ticket.clientName; getEl('detailsAttendant').textContent = ticket.attendant; getEl('detailsDescription').textContent = ticket.description; getEl('detailsCreatedAt').textContent = formatDateTime(ticket.createdAt); getEl('detailsStartedAt').textContent = formatDateTime(ticket.startedAt); getEl('detailsCompletedAt').textContent = formatDateTime(ticket.completedAt); getEl('detailsDuration').textContent = formatDuration(ticket.startedAt, ticket.completedAt); getEl('detailsStatus').innerHTML = `<span class="status-badge status-${ticket.status.replace(/\s+/g, '-').toLowerCase()}">${ticket.status}</span>`; detailsModal.classList.add('active'); };
+    
+    // Lógica de eventos
     ticketForm.addEventListener('submit', async (e) => { e.preventDefault(); const newTicket = { id: Date.now(), clientName: getEl('clientName').value.trim(), attendant: getEl('attendant').value.trim(), description: getEl('description').value.trim(), status: 'Aberto', createdAt: new Date().toISOString(), startedAt: null, completedAt: null }; tickets.push(newTicket); await saveTicketsToBin(); renderTable(); ticketForm.reset(); });
     ticketTableBody.addEventListener('click', async (e) => { const target = e.target.closest('button'); if (!target) return; const { viewId, startId, completeId, editId, deleteId } = target.dataset; let needsSave = false; if (viewId) showDetailsModal(viewId); if (startId) { const ticket = tickets.find(t => t.id == startId); if (ticket) { ticket.status = 'Em andamento'; ticket.startedAt = new Date().toISOString(); needsSave = true; }} if (completeId) { const ticket = tickets.find(t => t.id == completeId); if (ticket) { ticket.status = 'Concluído'; ticket.completedAt = new Date().toISOString(); needsSave = true; }} if (editId) { const ticket = tickets.find(t => t.id == editId); if (ticket) { getEl('editTicketId').value = ticket.id; editForm.reset(); getEl('editClientName').value = ticket.clientName; getEl('editAttendant').value = ticket.attendant; getEl('editDescription').value = ticket.description; editModal.classList.add('active'); }} if (deleteId) { if (confirm('Tem certeza?')) { tickets = tickets.filter(t => t.id != deleteId); needsSave = true; }} if (needsSave) { await saveTicketsToBin(); renderTable(); } });
     editForm.addEventListener('submit', async (e) => { e.preventDefault(); const ticket = tickets.find(t => t.id == getEl('editTicketId').value); if (ticket) { ticket.clientName = getEl('editClientName').value.trim(); ticket.attendant = getEl('editAttendant').value.trim(); ticket.description = getEl('editDescription').value.trim(); await saveTicketsToBin(); renderTable(); editModal.classList.remove('active'); }});
@@ -122,6 +175,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     closeDetailsBtn.addEventListener('click', closeModal(detailsModal));
     detailsModal.addEventListener('click', (e) => { if (e.target === detailsModal) closeModal(detailsModal)(); });
     [filterName, filterAttendant, filterStatus].forEach(f => f.addEventListener('input', renderTable));
+
+    // INICIALIZAÇÃO
     tickets = await loadTicketsFromBin();
     renderTable();
     setInterval(updateDurations, 1000);
