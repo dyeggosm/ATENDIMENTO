@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Atendimento ao Cliente</title>
+
+    <!-- Fontes e Ícones -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.1/css/all.min.css">
+
+    <!-- Bibliotecas para exportação -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+    
+    <style>
+        :root {
+            --primary-color: #3B82F6; --primary-hover-color: #2563EB;
+            --background-color: #F3F4F6; --card-background: #FFFFFF;
+            --text-primary: #1F2937; --text-secondary: #6B7280;
+            --border-color: #E5E7EB;
+            --success-color: #10B981; --warning-color: #F59E0B;
+            --danger-color: #EF4444; --info-color: #6366F1;
+            --secondary-color: #6B7280; --secondary-hover-color: #4B5563;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif; margin: 0; background-color: var(--background-color);
+            color: var(--text-primary); line-height: 1.6;
+        }
+        /* ... (O restante do CSS é o mesmo da versão anterior, adicionei apenas o CSS do loader) ... */
+        header { background-color: var(--card-background); padding: 1rem 2rem; text-align: center; border-bottom: 1px solid var(--border-color); }
+        header h1 { margin: 0; font-size: 1.8rem; font-weight: 700; }
+        header h1 i { color: var(--primary-color); margin-right: 10px; }
+        main { padding: 2rem; display: grid; grid-template-columns: 400px 1fr; gap: 2rem; max-width: 1400px; margin: 0 auto; }
+        @media (max-width: 1200px) { main { grid-template-columns: 1fr; } }
+        .card { background: var(--card-background); padding: 2rem; border-radius: 12px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); }
+        .card h2 { margin-top: 0; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem; margin-bottom: 1.5rem; font-size: 1.25rem; font-weight: 600; }
+        .input-group { margin-bottom: 1rem; }
+        .input-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--text-secondary); }
+        .input-group input, .input-group textarea, .input-group select { width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 1rem; font-family: 'Inter', sans-serif; transition: border-color 0.2s, box-shadow 0.2s; }
+        .input-group input:focus, .input-group textarea:focus, .input-group select:focus { outline: none; border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2); }
+        .input-group textarea { resize: vertical; min-height: 120px; }
+        .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; color: #FFF; padding: 0.75rem 1.5rem; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; text-decoration: none; transition: all 0.2s; width: 100%; }
+        .btn-primary { background-color: var(--primary-color); }
+        .btn-primary:hover { background-color: var(--primary-hover-color); }
+        .btn-icon { padding: 0.5rem; line-height: 1; }
+        .btn-success { background-color: var(--success-color); }
+        .btn-success:hover { background-color: #059669; }
+        .btn-danger { background-color: var(--danger-color); }
+        .btn-danger:hover { background-color: #DC2626; }
+        .btn-info { background-color: var(--info-color); }
+        .btn-info:hover { background-color: #4F46E5; }
+        .btn-secondary { background-color: var(--secondary-color); color: #FFF; }
+        .btn-secondary:hover { background-color: var(--secondary-hover-color); }
+        .filters-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+        .export-container { margin-bottom: 1.5rem; display: flex; gap: 1rem; }
+        .export-container .btn { width: auto; }
+        .table-wrapper { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 1rem; text-align: left; border-bottom: 1px solid var(--border-color); vertical-align: middle; }
+        thead th { background-color: var(--background-color); font-weight: 600; text-transform: uppercase; font-size: 0.8rem; letter-spacing: 0.05em; color: var(--text-secondary); }
+        tbody tr:hover { background-color: #F9FAFB; }
+        .action-buttons { display: flex; gap: 0.5rem; align-items: center; }
+        .status-badge { padding: 0.25rem 0.75rem; border-radius: 999px; font-size: 0.8rem; font-weight: 600; text-align: center; min-width: 110px; }
+        .status-aberto { background-color: #FEE2E2; color: #B91C1C; }
+        .status-em-andamento { background-color: #FEF3C7; color: #92400E; }
+        .status-concluido { background-color: #D1FAE5; color: #065F46; }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(17, 24, 39, 0.6); display: none; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(4px); }
+        .modal-overlay.active { display: flex; }
+        .modal-content { background: var(--card-background); padding: 2rem; border-radius: 12px; width: 90%; max-width: 550px; box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1); }
+        .modal-buttons { display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem; }
+        .detail-item { margin-bottom: 1rem; }
+        .detail-item strong { display: block; color: var(--text-secondary); margin-bottom: 0.25rem; font-weight: 500; }
+        .detail-item p { margin: 0; font-size: 1rem; }
+        .detail-description { background-color: #F9FAFB; border: 1px solid var(--border-color); padding: 0.75rem; border-radius: 6px; white-space: pre-wrap; word-wrap: break-word; }
+
+        /* Estilo do Loader */
+        #loader {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(5px);
+            display: none; align-items: center; justify-content: center;
+            z-index: 9999; flex-direction: column; gap: 1rem;
+            color: var(--text-primary); font-weight: 600;
+        }
+        .spinner {
+            width: 50px; height: 50px; border: 5px solid #f3f3f3;
+            border-top: 5px solid var(--primary-color);
+            border-radius: 50%; animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    
+    <!-- Loader Element -->
+    <div id="loader">
+        <div class="spinner"></div>
+        <p>Sincronizando com a nuvem...</p>
+    </div>
+
+    <!-- O HTML do Header, Main e Modais continua o mesmo -->
+    <header><h1><i class="fa-solid fa-headset"></i>Sistema de Atendimento</h1></header>
+    <main>
+        <aside class="form-section"><div class="card"><h2><i class="fa-solid fa-plus"></i> Novo Atendimento</h2><form id="ticketForm"><div class="input-group"><label for="clientName">Nome do Cliente</label><input type="text" id="clientName" required></div><div class="input-group"><label for="attendant">Responsável</label><input type="text" id="attendant" required></div><div class="input-group"><label for="description">Descrição do Problema</label><textarea id="description" required></textarea></div><button type="submit" class="btn btn-primary"><i class="fa-solid fa-paper-plane"></i> Cadastrar</button></form></div></aside>
+        <section class="data-section"><div class="card"><h2><i class="fa-solid fa-list-check"></i> Atendimentos Cadastrados</h2><div class="filters-container"><input type="text" id="filterName" class="input-group" placeholder="Filtrar por nome..."><input type="text" id="filterAttendant" class="input-group" placeholder="Filtrar por responsável..."><select id="filterStatus" class="input-group"><option value="">Todos</option><option value="Aberto">Aberto</option><option value="Em andamento">Em andamento</option><option value="Concluído">Concluído</option></select></div><div class="export-container"><button id="exportExcelBtn" class="btn btn-success"><i class="fa-solid fa-file-excel"></i> Excel</button><button id="exportPdfBtn" class="btn btn-danger"><i class="fa-solid fa-file-pdf"></i> PDF</button></div><div class="table-wrapper"><table><thead><tr><th>Cliente</th><th>Responsável</th><th>Status</th><th>Criação</th><th>Duração</th><th>Ações</th></tr></thead><tbody id="ticketTableBody"></tbody></table></div></div></section>
+    </main>
+    <div class="modal-overlay" id="detailsModal"><div class="modal-content"><h2><i class="fa-solid fa-circle-info"></i> Detalhes do Atendimento</h2><div class="detail-item"><strong>Cliente:</strong><p id="detailsClientName"></p></div><div class="detail-item"><strong>Responsável:</strong><p id="detailsAttendant"></p></div><div class="detail-item"><strong>Status:</strong><div id="detailsStatus"></div></div><div class="detail-item"><strong>Descrição:</strong><p id="detailsDescription" class="detail-description"></p></div><div class="detail-item"><strong>Criação:</strong><p id="detailsCreatedAt"></p></div><div class="detail-item"><strong>Início:</strong><p id="detailsStartedAt"></p></div><div class="detail-item"><strong>Conclusão:</strong><p id="detailsCompletedAt"></p></div><div class="detail-item"><strong>Duração:</strong><p id="detailsDuration"></p></div><div class="modal-buttons"><button type="button" id="closeDetailsBtn" class="btn btn-secondary">Fechar</button></div></div></div>
+    <div class="modal-overlay" id="editModal"><div class="modal-content"><h2><i class="fa-solid fa-pen-to-square"></i> Editar Atendimento</h2><form id="editForm"><input type="hidden" id="editTicketId"><div class="input-group"><label for="editClientName">Nome</label><input type="text" id="editClientName" required></div><div class="input-group"><label for="editAttendant">Responsável</label><input type="text" id="editAttendant" required></div><div class="input-group"><label for="editDescription">Descrição</label><textarea id="editDescription" required></textarea></div><div class="modal-buttons"><button type="button" id="cancelEditBtn" class="btn btn-secondary">Cancelar</button><button type="submit" class="btn btn-primary">Salvar</button></div></form></div></div>
+
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+    // --- Configuração da API JSONBin.io ---
+    const BIN_ID = '6845afde8561e97a5021138f';
+    const MASTER_KEY = '$2a$10$yOSwpmy9TtxmuUs.uMa70O.BQ1n9mKVySmU5cukHrueEjJyofG7Cm';
+    const API_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
+
+    // --- Seletores e Estado ---
+    const getEl = (id) => document.getElementById(id);
+    const loader = getEl('loader');
+    // ... outros seletores permanecem os mesmos
+    const ticketForm = getEl('ticketForm'), ticketTableBody = getEl('ticketTableBody');
+    const filterName = getEl('filterName'), filterAttendant = getEl('filterAttendant'), filterStatus = getEl('filterStatus');
+    const editModal = getEl('editModal'), editForm = getEl('editForm'), cancelEditBtn = getEl('cancelEditBtn');
+    const detailsModal = getEl('detailsModal'), closeDetailsBtn = getEl('closeDetailsBtn');
+
+    let tickets = []; // Começa vazio, será populado pela API
+
+    // --- Funções de Loading ---
+    const showLoader = () => loader.style.display = 'flex';
+    const hideLoader = () => loader.style.display = 'none';
+
+    // --- Funções de API ---
+    const loadTicketsFromBin = async () => {
+        showLoader();
+        try {
+            const response = await fetch(`${API_URL}/latest`, {
+                headers: { 'X-Master-Key': MASTER_KEY }
+            });
+            if (!response.ok) throw new Error('Não foi possível carregar os dados.');
+            const data = await response.json();
+            return data.record || [];
+        } catch (error) {
+            console.error("Erro ao carregar dados do JSONBin:", error);
+            alert("Erro ao carregar os dados. Verifique o console para mais detalhes.");
+            return [];
+        } finally {
+            hideLoader();
+        }
+    };
+
+    const saveTicketsToBin = async () => {
+        showLoader();
+        try {
+            await fetch(API_URL, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Master-Key': MASTER_KEY,
+                },
+                body: JSON.stringify(tickets)
+            });
+        } catch (error) {
+            console.error("Erro ao salvar dados no JSONBin:", error);
+            alert("Erro ao salvar os dados. Suas alterações podem não ter sido persistidas.");
+        } finally {
+            hideLoader();
+        }
+    };
+    
+    // --- Funções Principais (a maioria continua igual) ---
+    const formatDateTime = (isoString) => isoString ? new Date(isoString).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : 'N/A';
+    const formatDuration = (start, end) => { if (!start) return '00:00:00'; let ms = (end ? new Date(end) : new Date()) - new Date(start); if (ms < 0) ms = 0; const s = Math.floor(ms / 1000), h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60; return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`; };
+
+    const renderTable = () => {
+        const filters = { name: filterName.value.toLowerCase(), attendant: filterAttendant.value.toLowerCase(), status: filterStatus.value };
+        const statusOrder = { "Em andamento": 1, "Aberto": 2, "Concluído": 3 };
+        const sortedTickets = [...tickets].sort((a, b) => (statusOrder[a.status] - statusOrder[b.status]) || (new Date(b.createdAt) - new Date(a.createdAt)));
+        const filteredTickets = sortedTickets.filter(t => t.clientName.toLowerCase().includes(filters.name) && t.attendant.toLowerCase().includes(filters.attendant) && (filters.status ? t.status === filters.status : true));
+        
+        ticketTableBody.innerHTML = '';
+        if (filteredTickets.length === 0) { ticketTableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 2rem;">Nenhum atendimento encontrado.</td></tr>'; return; }
+
+        filteredTickets.forEach(ticket => {
+            const tr = document.createElement('tr');
+            const statusClass = `status-${ticket.status.replace(/\s+/g, '-').toLowerCase()}`;
+            let actionButtons = '';
+            if (ticket.status === 'Aberto') actionButtons += `<button class="btn btn-icon btn-primary" data-start-id="${ticket.id}" title="Iniciar Atendimento"><i class="fa-solid fa-play"></i></button>`;
+            else if (ticket.status === 'Em andamento') actionButtons += `<button class="btn btn-icon btn-success" data-complete-id="${ticket.id}" title="Concluir"><i class="fa-solid fa-check"></i></button>`;
+            if (ticket.status !== 'Concluído') actionButtons += `<button class="btn btn-icon btn-info" data-edit-id="${ticket.id}" title="Editar"><i class="fa-solid fa-pen"></i></button>`;
+            tr.innerHTML = `<td>${ticket.clientName}</td><td>${ticket.attendant}</td><td><span class="status-badge ${statusClass}">${ticket.status}</span></td><td>${formatDateTime(ticket.createdAt)}</td><td data-duration-id="${ticket.id}">${formatDuration(ticket.startedAt, ticket.completedAt)}</td><td><div class="action-buttons"><button class="btn btn-icon btn-secondary" data-view-id="${ticket.id}" title="Ver Detalhes"><i class="fa-solid fa-eye"></i></button>${actionButtons}<button class="btn btn-icon btn-danger" data-delete-id="${ticket.id}" title="Excluir"><i class="fa-solid fa-trash"></i></button></div></td>`;
+            ticketTableBody.appendChild(tr);
+        });
+    };
+    
+    // ... O restante das funções (updateDurations, showDetailsModal, etc) permanecem idênticas
+    const updateDurations = () => { tickets.filter(t => t.status === 'Em andamento').forEach(ticket => { const cell = document.querySelector(`[data-duration-id="${ticket.id}"]`); if (cell) cell.textContent = formatDuration(ticket.startedAt, null); }); };
+    const showDetailsModal = (ticketId) => { const ticket = tickets.find(t => t.id == ticketId); if (!ticket) return; getEl('detailsClientName').textContent = ticket.clientName; getEl('detailsAttendant').textContent = ticket.attendant; getEl('detailsDescription').textContent = ticket.description; getEl('detailsCreatedAt').textContent = formatDateTime(ticket.createdAt); getEl('detailsStartedAt').textContent = formatDateTime(ticket.startedAt); getEl('detailsCompletedAt').textContent = formatDateTime(ticket.completedAt); getEl('detailsDuration').textContent = formatDuration(ticket.startedAt, ticket.completedAt); getEl('detailsStatus').innerHTML = `<span class="status-badge status-${ticket.status.replace(/\s+/g, '-').toLowerCase()}">${ticket.status}</span>`; detailsModal.classList.add('active'); };
+
+    // --- Lógica de Eventos (adaptada para async/await) ---
+    ticketForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const newTicket = { id: Date.now(), clientName: getEl('clientName').value.trim(), attendant: getEl('attendant').value.trim(), description: getEl('description').value.trim(), status: 'Aberto', createdAt: new Date().toISOString(), startedAt: null, completedAt: null };
+        tickets.push(newTicket);
+        await saveTicketsToBin(); // Salva na API
+        renderTable();
+        ticketForm.reset();
+    });
+
+    ticketTableBody.addEventListener('click', async (e) => {
+        const viewBtn = e.target.closest('[data-view-id]');
+        const startBtn = e.target.closest('[data-start-id]');
+        const completeBtn = e.target.closest('[data-complete-id]');
+        const editBtn = e.target.closest('[data-edit-id]');
+        const deleteBtn = e.target.closest('[data-delete-id]');
+
+        let needsSave = false;
+
+        if (viewBtn) showDetailsModal(viewBtn.dataset.viewId);
+        if (startBtn) { const ticket = tickets.find(t => t.id == startBtn.dataset.startId); if (ticket) { ticket.status = 'Em andamento'; ticket.startedAt = new Date().toISOString(); needsSave = true; }}
+        if (completeBtn) { const ticket = tickets.find(t => t.id == completeBtn.dataset.completeId); if (ticket) { ticket.status = 'Concluído'; ticket.completedAt = new Date().toISOString(); needsSave = true; }}
+        if (editBtn) { const ticket = tickets.find(t => t.id == editBtn.dataset.editId); if (ticket) { getEl('editTicketId').value = ticket.id; editForm.reset(); getEl('editClientName').value = ticket.clientName; getEl('editAttendant').value = ticket.attendant; getEl('editDescription').value = ticket.description; editModal.classList.add('active'); }}
+        if (deleteBtn) { if (confirm('Tem certeza?')) { tickets = tickets.filter(t => t.id != deleteBtn.dataset.deleteId); needsSave = true; }}
+
+        if (needsSave) {
+            await saveTicketsToBin();
+            renderTable();
+        }
+    });
+
+    editForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const ticket = tickets.find(t => t.id == getEl('editTicketId').value);
+        if (ticket) {
+            ticket.clientName = getEl('editClientName').value.trim();
+            ticket.attendant = getEl('editAttendant').value.trim();
+            ticket.description = getEl('editDescription').value.trim();
+            await saveTicketsToBin();
+            renderTable();
+            editModal.classList.remove('active');
+        }
+    });
+
+    // Eventos de modais e filtros (sem alterações)
+    const closeModal = (modal) => () => modal.classList.remove('active');
+    cancelEditBtn.addEventListener('click', closeModal(editModal));
+    editModal.addEventListener('click', (e) => { if (e.target === editModal) closeModal(editModal)(); });
+    closeDetailsBtn.addEventListener('click', closeModal(detailsModal));
+    detailsModal.addEventListener('click', (e) => { if (e.target === detailsModal) closeModal(detailsModal)(); });
+    [filterName, filterAttendant, filterStatus].forEach(f => f.addEventListener('input', renderTable));
+
+    // --- Inicialização da Aplicação ---
+    tickets = await loadTicketsFromBin();
+    renderTable();
+    setInterval(updateDurations, 1000);
+});
+</script>
+
+</body>
+</html>
