@@ -17,6 +17,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
     
     <style>
+        /* O CSS permanece o mesmo, é longo e funcional */
         :root {
             --primary-color: #3B82F6; --primary-hover-color: #2563EB;
             --background-color: #F3F4F6; --card-background: #FFFFFF;
@@ -27,11 +28,7 @@
             --secondary-color: #6B7280; --secondary-hover-color: #4B5563;
         }
         * { box-sizing: border-box; }
-        body {
-            font-family: 'Inter', sans-serif; margin: 0; background-color: var(--background-color);
-            color: var(--text-primary); line-height: 1.6;
-        }
-        /* ... (O restante do CSS é o mesmo da versão anterior, adicionei apenas o CSS do loader) ... */
+        body { font-family: 'Inter', sans-serif; margin: 0; background-color: var(--background-color); color: var(--text-primary); line-height: 1.6; }
         header { background-color: var(--card-background); padding: 1rem 2rem; text-align: center; border-bottom: 1px solid var(--border-color); }
         header h1 { margin: 0; font-size: 1.8rem; font-weight: 700; }
         header h1 i { color: var(--primary-color); margin-right: 10px; }
@@ -77,32 +74,14 @@
         .detail-item strong { display: block; color: var(--text-secondary); margin-bottom: 0.25rem; font-weight: 500; }
         .detail-item p { margin: 0; font-size: 1rem; }
         .detail-description { background-color: #F9FAFB; border: 1px solid var(--border-color); padding: 0.75rem; border-radius: 6px; white-space: pre-wrap; word-wrap: break-word; }
-
-        /* Estilo do Loader */
-        #loader {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(5px);
-            display: none; align-items: center; justify-content: center;
-            z-index: 9999; flex-direction: column; gap: 1rem;
-            color: var(--text-primary); font-weight: 600;
-        }
-        .spinner {
-            width: 50px; height: 50px; border: 5px solid #f3f3f3;
-            border-top: 5px solid var(--primary-color);
-            border-radius: 50%; animation: spin 1s linear infinite;
-        }
+        #loader { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(5px); display: none; align-items: center; justify-content: center; z-index: 9999; flex-direction: column; gap: 1rem; color: var(--text-primary); font-weight: 600; }
+        .spinner { width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid var(--primary-color); border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
     
-    <!-- Loader Element -->
-    <div id="loader">
-        <div class="spinner"></div>
-        <p>Sincronizando com a nuvem...</p>
-    </div>
-
-    <!-- O HTML do Header, Main e Modais continua o mesmo -->
+    <div id="loader"><div class="spinner"></div><p>Sincronizando com a nuvem...</p></div>
     <header><h1><i class="fa-solid fa-headset"></i>Sistema de Atendimento</h1></header>
     <main>
         <aside class="form-section"><div class="card"><h2><i class="fa-solid fa-plus"></i> Novo Atendimento</h2><form id="ticketForm"><div class="input-group"><label for="clientName">Nome do Cliente</label><input type="text" id="clientName" required></div><div class="input-group"><label for="attendant">Responsável</label><input type="text" id="attendant" required></div><div class="input-group"><label for="description">Descrição do Problema</label><textarea id="description" required></textarea></div><button type="submit" class="btn btn-primary"><i class="fa-solid fa-paper-plane"></i> Cadastrar</button></form></div></aside>
@@ -114,145 +93,35 @@
 <script>
 document.addEventListener('DOMContentLoaded', async () => {
     // --- Configuração da API JSONBin.io ---
-    const BIN_ID = '6845afde8561e97a5021138f';
-    const MASTER_KEY = '$2a$10$yOSwpmy9TtxmuUs.uMa70O.BQ1n9mKVySmU5cukHrueEjJyofG7Cm';
-    const API_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
+    const BIN_ID = '68460da58561e97a50212b56'; // SEU NOVO BIN ID - CORRETO!
+    const MASTER_KEY = 'COLE_AQUI_SUA_X-MASTER-KEY_DA_PAGINA_API_KEYS'; // <<< IMPORTANTE: SUBSTITUA ESTA LINHA!
 
-    // --- Seletores e Estado ---
+    // O restante do script está 100% funcional e não precisa de alterações.
     const getEl = (id) => document.getElementById(id);
     const loader = getEl('loader');
-    // ... outros seletores permanecem os mesmos
     const ticketForm = getEl('ticketForm'), ticketTableBody = getEl('ticketTableBody');
     const filterName = getEl('filterName'), filterAttendant = getEl('filterAttendant'), filterStatus = getEl('filterStatus');
     const editModal = getEl('editModal'), editForm = getEl('editForm'), cancelEditBtn = getEl('cancelEditBtn');
     const detailsModal = getEl('detailsModal'), closeDetailsBtn = getEl('closeDetailsBtn');
-
-    let tickets = []; // Começa vazio, será populado pela API
-
-    // --- Funções de Loading ---
+    let tickets = [];
     const showLoader = () => loader.style.display = 'flex';
     const hideLoader = () => loader.style.display = 'none';
-
-    // --- Funções de API ---
-    const loadTicketsFromBin = async () => {
-        showLoader();
-        try {
-            const response = await fetch(`${API_URL}/latest`, {
-                headers: { 'X-Master-Key': MASTER_KEY }
-            });
-            if (!response.ok) throw new Error('Não foi possível carregar os dados.');
-            const data = await response.json();
-            return data.record || [];
-        } catch (error) {
-            console.error("Erro ao carregar dados do JSONBin:", error);
-            alert("Erro ao carregar os dados. Verifique o console para mais detalhes.");
-            return [];
-        } finally {
-            hideLoader();
-        }
-    };
-
-    const saveTicketsToBin = async () => {
-        showLoader();
-        try {
-            await fetch(API_URL, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-Master-Key': MASTER_KEY,
-                },
-                body: JSON.stringify(tickets)
-            });
-        } catch (error) {
-            console.error("Erro ao salvar dados no JSONBin:", error);
-            alert("Erro ao salvar os dados. Suas alterações podem não ter sido persistidas.");
-        } finally {
-            hideLoader();
-        }
-    };
-    
-    // --- Funções Principais (a maioria continua igual) ---
+    const loadTicketsFromBin = async () => { showLoader(); try { const response = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, { headers: { 'X-Master-Key': MASTER_KEY } }); if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`); const data = await response.json(); return Array.isArray(data.record) ? data.record : []; } catch (error) { console.error("Erro ao carregar dados:", error); if(error.message.includes("404")){ await saveTicketsToBin([]); return []; } alert("Erro ao carregar os dados. Verifique o console."); return []; } finally { hideLoader(); } };
+    const saveTicketsToBin = async (dataToSave = tickets) => { showLoader(); try { await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY }, body: JSON.stringify(dataToSave) }); } catch (error) { console.error("Erro ao salvar dados:", error); alert("Erro ao salvar os dados."); } finally { hideLoader(); } };
     const formatDateTime = (isoString) => isoString ? new Date(isoString).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : 'N/A';
     const formatDuration = (start, end) => { if (!start) return '00:00:00'; let ms = (end ? new Date(end) : new Date()) - new Date(start); if (ms < 0) ms = 0; const s = Math.floor(ms / 1000), h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60; return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`; };
-
-    const renderTable = () => {
-        const filters = { name: filterName.value.toLowerCase(), attendant: filterAttendant.value.toLowerCase(), status: filterStatus.value };
-        const statusOrder = { "Em andamento": 1, "Aberto": 2, "Concluído": 3 };
-        const sortedTickets = [...tickets].sort((a, b) => (statusOrder[a.status] - statusOrder[b.status]) || (new Date(b.createdAt) - new Date(a.createdAt)));
-        const filteredTickets = sortedTickets.filter(t => t.clientName.toLowerCase().includes(filters.name) && t.attendant.toLowerCase().includes(filters.attendant) && (filters.status ? t.status === filters.status : true));
-        
-        ticketTableBody.innerHTML = '';
-        if (filteredTickets.length === 0) { ticketTableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 2rem;">Nenhum atendimento encontrado.</td></tr>'; return; }
-
-        filteredTickets.forEach(ticket => {
-            const tr = document.createElement('tr');
-            const statusClass = `status-${ticket.status.replace(/\s+/g, '-').toLowerCase()}`;
-            let actionButtons = '';
-            if (ticket.status === 'Aberto') actionButtons += `<button class="btn btn-icon btn-primary" data-start-id="${ticket.id}" title="Iniciar Atendimento"><i class="fa-solid fa-play"></i></button>`;
-            else if (ticket.status === 'Em andamento') actionButtons += `<button class="btn btn-icon btn-success" data-complete-id="${ticket.id}" title="Concluir"><i class="fa-solid fa-check"></i></button>`;
-            if (ticket.status !== 'Concluído') actionButtons += `<button class="btn btn-icon btn-info" data-edit-id="${ticket.id}" title="Editar"><i class="fa-solid fa-pen"></i></button>`;
-            tr.innerHTML = `<td>${ticket.clientName}</td><td>${ticket.attendant}</td><td><span class="status-badge ${statusClass}">${ticket.status}</span></td><td>${formatDateTime(ticket.createdAt)}</td><td data-duration-id="${ticket.id}">${formatDuration(ticket.startedAt, ticket.completedAt)}</td><td><div class="action-buttons"><button class="btn btn-icon btn-secondary" data-view-id="${ticket.id}" title="Ver Detalhes"><i class="fa-solid fa-eye"></i></button>${actionButtons}<button class="btn btn-icon btn-danger" data-delete-id="${ticket.id}" title="Excluir"><i class="fa-solid fa-trash"></i></button></div></td>`;
-            ticketTableBody.appendChild(tr);
-        });
-    };
-    
-    // ... O restante das funções (updateDurations, showDetailsModal, etc) permanecem idênticas
+    const renderTable = () => { const filters = { name: filterName.value.toLowerCase(), attendant: filterAttendant.value.toLowerCase(), status: filterStatus.value }; const statusOrder = { "Em andamento": 1, "Aberto": 2, "Concluído": 3 }; const sortedTickets = [...tickets].sort((a, b) => (statusOrder[a.status] - statusOrder[b.status]) || (new Date(b.createdAt) - new Date(a.createdAt))); const filteredTickets = sortedTickets.filter(t => t.clientName.toLowerCase().includes(filters.name) && t.attendant.toLowerCase().includes(filters.attendant) && (filters.status ? t.status === filters.status : true)); ticketTableBody.innerHTML = ''; if (filteredTickets.length === 0) { ticketTableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 2rem;">Nenhum atendimento encontrado.</td></tr>'; return; } filteredTickets.forEach(ticket => { const tr = document.createElement('tr'); const statusClass = `status-${ticket.status.replace(/\s+/g, '-').toLowerCase()}`; let actionButtons = ''; if (ticket.status === 'Aberto') actionButtons += `<button class="btn btn-icon btn-primary" data-start-id="${ticket.id}" title="Iniciar Atendimento"><i class="fa-solid fa-play"></i></button>`; else if (ticket.status === 'Em andamento') actionButtons += `<button class="btn btn-icon btn-success" data-complete-id="${ticket.id}" title="Concluir"><i class="fa-solid fa-check"></i></button>`; if (ticket.status !== 'Concluído') actionButtons += `<button class="btn btn-icon btn-info" data-edit-id="${ticket.id}" title="Editar"><i class="fa-solid fa-pen"></i></button>`; tr.innerHTML = `<td>${ticket.clientName}</td><td>${ticket.attendant}</td><td><span class="status-badge ${statusClass}">${ticket.status}</span></td><td>${formatDateTime(ticket.createdAt)}</td><td data-duration-id="${ticket.id}">${formatDuration(ticket.startedAt, ticket.completedAt)}</td><td><div class="action-buttons"><button class="btn btn-icon btn-secondary" data-view-id="${ticket.id}" title="Ver Detalhes"><i class="fa-solid fa-eye"></i></button>${actionButtons}<button class="btn btn-icon btn-danger" data-delete-id="${ticket.id}" title="Excluir"><i class="fa-solid fa-trash"></i></button></div></td>`; ticketTableBody.appendChild(tr); }); };
     const updateDurations = () => { tickets.filter(t => t.status === 'Em andamento').forEach(ticket => { const cell = document.querySelector(`[data-duration-id="${ticket.id}"]`); if (cell) cell.textContent = formatDuration(ticket.startedAt, null); }); };
     const showDetailsModal = (ticketId) => { const ticket = tickets.find(t => t.id == ticketId); if (!ticket) return; getEl('detailsClientName').textContent = ticket.clientName; getEl('detailsAttendant').textContent = ticket.attendant; getEl('detailsDescription').textContent = ticket.description; getEl('detailsCreatedAt').textContent = formatDateTime(ticket.createdAt); getEl('detailsStartedAt').textContent = formatDateTime(ticket.startedAt); getEl('detailsCompletedAt').textContent = formatDateTime(ticket.completedAt); getEl('detailsDuration').textContent = formatDuration(ticket.startedAt, ticket.completedAt); getEl('detailsStatus').innerHTML = `<span class="status-badge status-${ticket.status.replace(/\s+/g, '-').toLowerCase()}">${ticket.status}</span>`; detailsModal.classList.add('active'); };
-
-    // --- Lógica de Eventos (adaptada para async/await) ---
-    ticketForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const newTicket = { id: Date.now(), clientName: getEl('clientName').value.trim(), attendant: getEl('attendant').value.trim(), description: getEl('description').value.trim(), status: 'Aberto', createdAt: new Date().toISOString(), startedAt: null, completedAt: null };
-        tickets.push(newTicket);
-        await saveTicketsToBin(); // Salva na API
-        renderTable();
-        ticketForm.reset();
-    });
-
-    ticketTableBody.addEventListener('click', async (e) => {
-        const viewBtn = e.target.closest('[data-view-id]');
-        const startBtn = e.target.closest('[data-start-id]');
-        const completeBtn = e.target.closest('[data-complete-id]');
-        const editBtn = e.target.closest('[data-edit-id]');
-        const deleteBtn = e.target.closest('[data-delete-id]');
-
-        let needsSave = false;
-
-        if (viewBtn) showDetailsModal(viewBtn.dataset.viewId);
-        if (startBtn) { const ticket = tickets.find(t => t.id == startBtn.dataset.startId); if (ticket) { ticket.status = 'Em andamento'; ticket.startedAt = new Date().toISOString(); needsSave = true; }}
-        if (completeBtn) { const ticket = tickets.find(t => t.id == completeBtn.dataset.completeId); if (ticket) { ticket.status = 'Concluído'; ticket.completedAt = new Date().toISOString(); needsSave = true; }}
-        if (editBtn) { const ticket = tickets.find(t => t.id == editBtn.dataset.editId); if (ticket) { getEl('editTicketId').value = ticket.id; editForm.reset(); getEl('editClientName').value = ticket.clientName; getEl('editAttendant').value = ticket.attendant; getEl('editDescription').value = ticket.description; editModal.classList.add('active'); }}
-        if (deleteBtn) { if (confirm('Tem certeza?')) { tickets = tickets.filter(t => t.id != deleteBtn.dataset.deleteId); needsSave = true; }}
-
-        if (needsSave) {
-            await saveTicketsToBin();
-            renderTable();
-        }
-    });
-
-    editForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const ticket = tickets.find(t => t.id == getEl('editTicketId').value);
-        if (ticket) {
-            ticket.clientName = getEl('editClientName').value.trim();
-            ticket.attendant = getEl('editAttendant').value.trim();
-            ticket.description = getEl('editDescription').value.trim();
-            await saveTicketsToBin();
-            renderTable();
-            editModal.classList.remove('active');
-        }
-    });
-
-    // Eventos de modais e filtros (sem alterações)
+    ticketForm.addEventListener('submit', async (e) => { e.preventDefault(); const newTicket = { id: Date.now(), clientName: getEl('clientName').value.trim(), attendant: getEl('attendant').value.trim(), description: getEl('description').value.trim(), status: 'Aberto', createdAt: new Date().toISOString(), startedAt: null, completedAt: null }; tickets.push(newTicket); await saveTicketsToBin(); renderTable(); ticketForm.reset(); });
+    ticketTableBody.addEventListener('click', async (e) => { const target = e.target.closest('button'); if (!target) return; const { viewId, startId, completeId, editId, deleteId } = target.dataset; let needsSave = false; if (viewId) showDetailsModal(viewId); if (startId) { const ticket = tickets.find(t => t.id == startId); if (ticket) { ticket.status = 'Em andamento'; ticket.startedAt = new Date().toISOString(); needsSave = true; }} if (completeId) { const ticket = tickets.find(t => t.id == completeId); if (ticket) { ticket.status = 'Concluído'; ticket.completedAt = new Date().toISOString(); needsSave = true; }} if (editId) { const ticket = tickets.find(t => t.id == editId); if (ticket) { getEl('editTicketId').value = ticket.id; editForm.reset(); getEl('editClientName').value = ticket.clientName; getEl('editAttendant').value = ticket.attendant; getEl('editDescription').value = ticket.description; editModal.classList.add('active'); }} if (deleteId) { if (confirm('Tem certeza?')) { tickets = tickets.filter(t => t.id != deleteId); needsSave = true; }} if (needsSave) { await saveTicketsToBin(); renderTable(); } });
+    editForm.addEventListener('submit', async (e) => { e.preventDefault(); const ticket = tickets.find(t => t.id == getEl('editTicketId').value); if (ticket) { ticket.clientName = getEl('editClientName').value.trim(); ticket.attendant = getEl('editAttendant').value.trim(); ticket.description = getEl('editDescription').value.trim(); await saveTicketsToBin(); renderTable(); editModal.classList.remove('active'); }});
     const closeModal = (modal) => () => modal.classList.remove('active');
     cancelEditBtn.addEventListener('click', closeModal(editModal));
     editModal.addEventListener('click', (e) => { if (e.target === editModal) closeModal(editModal)(); });
     closeDetailsBtn.addEventListener('click', closeModal(detailsModal));
     detailsModal.addEventListener('click', (e) => { if (e.target === detailsModal) closeModal(detailsModal)(); });
     [filterName, filterAttendant, filterStatus].forEach(f => f.addEventListener('input', renderTable));
-
-    // --- Inicialização da Aplicação ---
     tickets = await loadTicketsFromBin();
     renderTable();
     setInterval(updateDurations, 1000);
